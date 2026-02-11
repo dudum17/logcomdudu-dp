@@ -1,53 +1,85 @@
 import sys
 import re
 
+class Token:
+     def __init__(self, kind, value):
+          self.kind = kind
+          self.value = value
+
+class Lexer:
+     def __init__(self, source, position):
+          self.source = source
+          self.position = position
+          self.next = None
+     def selectNext(self):
+        # Pular espaços
+        while self.position < len(self.source) and self.source[self.position] == " ":
+            self.position += 1
+
+        # Se chegou ao fim da string
+        if self.position >= len(self.source):
+            self.next = Token("EOF", '')
+            return
+
+        caracter = self.source[self.position]
+
+        # Identificar operadores
+        if caracter == "+":
+            self.next = Token("PLUS", '+')
+            self.position += 1
+        elif caracter == "-":
+            self.next = Token("MINUS", '-')
+            self.position += 1
+        elif caracter.isdigit():
+            # Ler número
+            num = ""
+            while self.position < len(self.source) and self.source[self.position].isdigit():
+                num += self.source[self.position]
+                self.position += 1
+            self.next = Token("INT", num)
+        else:
+            # Se encontrou caractere inválido (nem número, nem operador, nem espaço)
+            raise Exception(f"Caractere inválido encontrado: '{caracter}' na posição {self.position}")
+
+class Parser:
+     @staticmethod
+     def parseExpression(lex):
+          if lex.next.kind != "INT":
+               raise Exception("ERRO")
+          res = int(lex.next.value)
+          lex.selectNext()
+          while(lex.next.kind == "PLUS" or lex.next.kind == "MINUS"):
+               op = lex.next.kind 
+               lex.selectNext()
+               if lex.next.kind != "INT":
+                    raise Exception("ERRO")
+               if op == "PLUS":
+                    res += int(lex.next.value)
+               elif op == "MINUS":
+                    res -= int(lex.next.value)
+               lex.selectNext()
+          return res
+     @staticmethod
+     def run(code):
+          lex = Lexer(code, 0)
+          lex.selectNext()
+          par = Parser.parseExpression(lex)
+          res = Parser.parseExpression(lex)
+          if (lex.next.kind != "EOF"):
+              raise Exception("expressão invalida")
+          else:
+              return Parser.parseExpression(lex)
+              return res
+
+
+
 def main():
-    if len(sys.argv) != 2:
+     if len(sys.argv) != 2:
         print("Uso: python3 main.py 'expressão'")
         sys.exit(1)
 
-    expressao = sys.argv[1]  # pega o argumento passado    
+     print(Parser.run(sys.argv[1]))
 
-    padrao = r"^\s*\d+\s*([+-]\s*\d+\s*)*$"
-
-    if not re.fullmatch(padrao, expressao):
-        print("Erro: expressão inválida", file=sys.stderr)
-        sys.exit(1)
-    
-    try:  
-        num = ""
-        expr = ""
-        sum = 0
-        for i in expressao:
-            if i != " ":
-                if (i != "+") and (i != "-"):
-                    num += i
-                elif (i == "+"):
-                    num = int(num)
-                    if expr != "-":
-                        sum += num
-                    else:
-                        sum -= num
-                    expr = "+"
-                    num = ""
-                elif (i == "-"):
-                    num = int(num)
-                    if expr != "-":
-                        sum += num
-                    else:
-                        sum -= num
-                    expr = "-"
-                    num = ""
-
-        if num:
-            num = int(num)
-            if expr == "+":
-                sum += num
-            else:
-                sum -= num
-        print(sum)                     
-    except Exception as e:
-        print(f"Erro: {e}")
 
 if __name__ == "__main__":
     main()
