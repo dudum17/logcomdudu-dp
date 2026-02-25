@@ -42,15 +42,12 @@ class Lexer:
 class Parser:
     lexer = None  # atributo estático
 
-    @staticmethod
-    def error():
-        raise Exception("[Parser] error code")
 
     @staticmethod
     def parse_expression():
         # expressão deve começar com INT
         if Parser.lexer.next.kind != "INT":
-            Parser.error()
+            raise Exception("[Parser] error code")
 
         res = int(Parser.lexer.next.value)
         Parser.lexer.select_next()
@@ -62,7 +59,7 @@ class Parser:
 
             # depois de + ou - tem que vir INT
             if Parser.lexer.next.kind != "INT":
-                Parser.error()
+                raise Exception("[Parser] error code")
 
             val = int(Parser.lexer.next.value)
             if op == "PLUS":
@@ -74,7 +71,7 @@ class Parser:
 
         # terminou a expressão: tem que ser EOF
         if Parser.lexer.next.kind != "EOF":
-            Parser.error()
+            raise Exception("[Parser] error code")
 
         return res
 
