@@ -40,54 +40,57 @@ class Lexer:
             raise Exception(f"Caractere inválido: '{caracter}' na posição {self.position}")
 
 class Parser:
-    lexer = None  #  atributo estático
+    lexer = None  # atributo estático
+
+    @staticmethod
+    def error():
+        raise Exception("[Parser] error code")
 
     @staticmethod
     def parse_expression():
+        # expressão deve começar com INT
         if Parser.lexer.next.kind != "INT":
-            raise Exception("ERRO")
+            Parser.error()
 
         res = int(Parser.lexer.next.value)
         Parser.lexer.select_next()
 
+        # (PLUS|MINUS INT)*
         while Parser.lexer.next.kind in ("PLUS", "MINUS"):
             op = Parser.lexer.next.kind
             Parser.lexer.select_next()
 
+            # depois de + ou - tem que vir INT
             if Parser.lexer.next.kind != "INT":
-                raise Exception("ERRO")
+                Parser.error()
 
+            val = int(Parser.lexer.next.value)
             if op == "PLUS":
-                res += int(Parser.lexer.next.value)
+                res += val
             else:
-                res -= int(Parser.lexer.next.value)
+                res -= val
 
             Parser.lexer.select_next()
+
+        # terminou a expressão: tem que ser EOF
+        if Parser.lexer.next.kind != "EOF":
+            Parser.error()
 
         return res
 
     @staticmethod
     def run(code):
-        Parser.lexer = Lexer(code, 0)  # 🔥 inicializa atributo estático
+        Parser.lexer = Lexer(code, 0)
         Parser.lexer.select_next()
-
-        res = Parser.parse_expression()
-
-        if Parser.lexer.next.kind != "EOF":
-            raise Exception("expressão invalida")
-
-        return res
+        return Parser.parse_expression()
 
 def main():
     if len(sys.argv) != 2:
         print("Uso: python main.py \"expressão\"")
         sys.exit(1)
 
-    try:
-        print(Parser.run(sys.argv[1]))
-    except Exception:
-        print("[Parser] error code")
-        sys.exit(0)  # ou 1, depende do corretor (muitos aceitam 0 também)
+    # NÃO captura exception: o tester quer ver a Exception acontecer
+    print(Parser.run(sys.argv[1]))
 
 if __name__ == "__main__":
     main()
