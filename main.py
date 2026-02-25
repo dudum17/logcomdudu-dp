@@ -40,37 +40,42 @@ class Lexer:
             raise Exception(f"Caractere inválido: '{caracter}' na posição {self.position}")
 
 class Parser:
+    lexer = None  #  atributo estático
+
     @staticmethod
-    def parse_expression(lex):
-        if lex.next.kind != "INT":
+    def parse_expression():
+        if Parser.lexer.next.kind != "INT":
             raise Exception("ERRO")
 
-        res = int(lex.next.value)
-        lex.select_next()
+        res = int(Parser.lexer.next.value)
+        Parser.lexer.select_next()
 
-        while lex.next.kind in ("PLUS", "MINUS"):
-            op = lex.next.kind
-            lex.select_next()
+        while Parser.lexer.next.kind in ("PLUS", "MINUS"):
+            op = Parser.lexer.next.kind
+            Parser.lexer.select_next()
 
-            if lex.next.kind != "INT":
+            if Parser.lexer.next.kind != "INT":
                 raise Exception("ERRO")
 
             if op == "PLUS":
-                res += int(lex.next.value)
-            else:  # MINUS
-                res -= int(lex.next.value)
+                res += int(Parser.lexer.next.value)
+            else:
+                res -= int(Parser.lexer.next.value)
 
-            lex.select_next()
+            Parser.lexer.select_next()
 
         return res
 
     @staticmethod
     def run(code):
-        lex = Lexer(code, 0)
-        lex.select_next()
-        res = Parser.parse_expression(lex)
-        if lex.next.kind != "EOF":
+        Parser.lexer = Lexer(code, 0)  # 🔥 inicializa atributo estático
+        Parser.lexer.select_next()
+
+        res = Parser.parse_expression()
+
+        if Parser.lexer.next.kind != "EOF":
             raise Exception("expressão invalida")
+
         return res
 
 def main():
