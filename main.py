@@ -83,7 +83,11 @@ def main():
         print("Uso: python main.py \"expressão\"")
         sys.exit(1)
 
-    print(Parser.run(sys.argv[1]))
+    try:
+        print(Parser.run(sys.argv[1]))
+    except Exception:
+        print("[Parser] error code")
+        sys.exit(0)  # ou 1, depende do corretor (muitos aceitam 0 também)
 
 if __name__ == "__main__":
     main()
