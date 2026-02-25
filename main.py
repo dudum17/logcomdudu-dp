@@ -37,7 +37,7 @@ class Lexer:
             self.next = Token("INT", num)
 
         else:
-            raise Exception(f"Caractere inválido: '{caracter}' na posição {self.position}")
+            raise Exception("[Lexer] error code")
 
 class Parser:
     lexer = None  # atributo estático
