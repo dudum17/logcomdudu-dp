@@ -24,11 +24,21 @@ class Lexer:
         if caracter == '+':
             self.next = Token("PLUS", '+')
             self.position += 1
-
         elif caracter == '-':
             self.next = Token("MINUS", '-')
             self.position += 1
-
+        elif caracter == '*':
+            self.next = Token("MULT", '*')
+            self.position += 1      
+        elif caracter == '/':
+            self.next = Token("DIV", '/')
+            self.position += 1
+        elif caracter == '(':
+            self.next = Token("OPEN_PAR", '(')
+            self.position += 1
+        elif caracter == ')':
+            self.next = Token("CLOSE_PAR", ')')
+            self.position += 1
         elif caracter.isdigit():
             num = ""
             while self.position < len(self.source) and self.source[self.position].isdigit():
@@ -42,44 +52,64 @@ class Lexer:
 class Parser:
     lexer = None  # atributo estático
 
+    @staticmethod
+    def parse_factor():
+      if Parser.lexer.next.kind == "INT":
+        res = Parser.lexer.next.value   # <-- era Parser.lex
+        Parser.lexer.select_next()
+        return int(res)
+
+      elif Parser.lexer.next.kind == "PLUS":
+        Parser.lexer.select_next()
+        return Parser.parse_factor()
+
+      elif Parser.lexer.next.kind == "MINUS":
+        Parser.lexer.select_next()
+        return -Parser.parse_factor()
+
+      elif Parser.lexer.next.kind == "OPEN_PAR":
+        Parser.lexer.select_next()
+        res = Parser.parse_expression()
+        if Parser.lexer.next.kind != "CLOSE_PAR":
+            raise Exception("expressão invalida")
+        Parser.lexer.select_next()      
+        return res
+
+      else:
+        raise Exception("expressão invalida")
+
+    @staticmethod
+    def parse_term():
+        res = Parser.parse_factor()
+        while Parser.lexer.next.kind in ("MULT", "DIV"):
+            op = Parser.lexer.next.kind
+            Parser.lexer.select_next()
+            if op == "MULT":
+                 res *= Parser.parse_factor()
+            elif op == "DIV":
+                 res //= Parser.parse_factor()
+        return res
 
     @staticmethod
     def parse_expression():
-        # expressão deve começar com INT
-        if Parser.lexer.next.kind != "INT":
-            raise Exception("[Parser] error code")
-
-        res = int(Parser.lexer.next.value)
-        Parser.lexer.select_next()
-
-        # (PLUS|MINUS INT)*
+        res = Parser.parse_term()
         while Parser.lexer.next.kind in ("PLUS", "MINUS"):
             op = Parser.lexer.next.kind
             Parser.lexer.select_next()
-
-            # depois de + ou - tem que vir INT
-            if Parser.lexer.next.kind != "INT":
-                raise Exception("[Parser] error code")
-
-            val = int(Parser.lexer.next.value)
             if op == "PLUS":
-                res += val
-            else:
-                res -= val
-
-            Parser.lexer.select_next()
-
-        # terminou a expressão: tem que ser EOF
-        if Parser.lexer.next.kind != "EOF":
-            raise Exception("[Parser] error code")
-
+                 res += Parser.parse_term()
+            elif op == "MINUS":
+                 res -= Parser.parse_term()
         return res
 
     @staticmethod
     def run(code):
         Parser.lexer = Lexer(code, 0)
         Parser.lexer.select_next()
-        return Parser.parse_expression()
+        res =  Parser.parse_expression()
+        if Parser.lexer.next.kind != "EOF":
+          raise Exception(f"expressão invalida, sobrou token: {Parser.lexer.next.kind}")
+        return res
 
 def main():
     if len(sys.argv) != 2:
