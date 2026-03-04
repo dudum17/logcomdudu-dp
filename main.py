@@ -70,12 +70,12 @@ class Parser:
             Parser.lexer.select_next()
             res = Parser.parse_expression()
             if Parser.lexer.next.kind != "CLOSE_PAR":
-                raise Exception("expressão invalida")
+                raise Exception("[Parser] error code")
             Parser.lexer.select_next()  # <-- consome o ')'
             return res
 
         else:
-            raise Exception("expressão invalida")
+            raise Exception("[Parser] error code")
 
     @staticmethod
     def parse_term():
@@ -114,7 +114,7 @@ class Parser:
         Parser.lexer.select_next()
         res = Parser.parse_expression()
         if Parser.lexer.next.kind != "EOF":
-            raise Exception(f"expressão invalida, sobrou token: {Parser.lexer.next.kind}")
+            raise Exception("[Parser] error code")
         return res
 
 def main():
