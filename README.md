@@ -39,9 +39,11 @@ O interpretador reconhece os seguintes tokens:
 ## EBNF
 
 ```ebnf
-Expression  = Term , { ("+" | "-") , Term } ;
-Term        = Factor , { ("*" | "/") , Factor } ;
-Factor      = [ ("+" | "-") ] , ( INT | "(" , Expression , ")" ) ;
-INT         = Digit , { Digit } ;
-Digit       = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+EXPRESSION = TERM , { ("+" | "-") , TERM } ;
+TERM       = FACTOR , { ("*" | "/") , FACTOR } ;
+FACTOR     = ("+" | "-") , FACTOR
+           | "(" , EXPRESSION , ")"
+           | NUMBER ;
+NUMBER     = DIGIT , { DIGIT } ;
+DIGIT      = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 ;
 ```
