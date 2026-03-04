@@ -41,9 +41,7 @@ O interpretador reconhece os seguintes tokens:
 ```ebnf
 EXPRESSION = TERM , { ("+" | "-") , TERM } ;
 TERM       = FACTOR , { ("*" | "/") , FACTOR } ;
-FACTOR     = ("+" | "-") , FACTOR
-           | "(" , EXPRESSION , ")"
-           | NUMBER ;
+FACTOR     = ("+" | "-") , FACTOR | "(" , EXPRESSION , ")" | NUMBER ;
 NUMBER     = DIGIT , { DIGIT } ;
 DIGIT      = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 ;
 ```
