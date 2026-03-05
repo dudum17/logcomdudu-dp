@@ -1,4 +1,4 @@
-![git status](http://3.129.230.99/svg/dudum17/logcomdudu-dp/)
+![git status](https://compiler-tester.insper-0comp.com.br/svg/dudum17/logcomdudu-dp/)
 # LogComp – Roteiro 3 (v1.1)
 
 Este repositório contém um interpretador simples de expressões aritméticas inteiras, implementado em Python utilizando um **Lexer** e um **Parser (recursive descent)**.
