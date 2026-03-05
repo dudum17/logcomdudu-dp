@@ -68,13 +68,13 @@ class Parser:
         res = Parser.parse_expression()
 
         if Parser.lexer.next.kind != "CLOSE_PAR":
-            raise Exception("expressão invalida")
+            raise Exception("[Parser] error code")
 
         Parser.lexer.select_next()
         return res
 
       else:
-        raise Exception("expressão invalida")
+        raise Exception("[Parser] error code")
       
     @staticmethod
     def parse_power():
@@ -116,7 +116,7 @@ class Parser:
                 res = res * rhs
             else:  # DIV
                 if rhs == 0:
-                    raise Exception("divisão por zero")
+                    raise Exception("[Parser] error code")
                 res = res // rhs
 
         return res
