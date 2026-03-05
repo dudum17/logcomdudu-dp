@@ -28,8 +28,12 @@ class Lexer:
             self.next = Token("MINUS", '-')
             self.position += 1
         elif caracter == '*':
-            self.next = Token("MULT", '*')
-            self.position += 1
+           if self.position + 1 < len(self.source) and self.source[self.position + 1] == '*':
+              self.next = Token("POWER", '**')
+              self.position += 2
+           else:
+             self.next = Token("MULT", '*')
+             self.position += 1
         elif caracter == '/':
             self.next = Token("DIV", '/')
             self.position += 1
@@ -51,31 +55,52 @@ class Lexer:
 class Parser:
     lexer = None  # atributo estático
 
+
+    @staticmethod
+    def parse_atom():
+      if Parser.lexer.next.kind == "INT":
+        res = int(Parser.lexer.next.value)
+        Parser.lexer.select_next()
+        return res
+
+      elif Parser.lexer.next.kind == "OPEN_PAR":
+        Parser.lexer.select_next()
+        res = Parser.parse_expression()
+
+        if Parser.lexer.next.kind != "CLOSE_PAR":
+            raise Exception("expressão invalida")
+
+        Parser.lexer.select_next()
+        return res
+
+      else:
+        raise Exception("expressão invalida")
+      
+    @staticmethod
+    def parse_power():
+    # power := atom (POWER power)?
+       res = Parser.parse_atom()
+
+       if Parser.lexer.next.kind == "POWER":
+        Parser.lexer.select_next()
+        expo = Parser.parse_power()  # associativo à direita
+        res = res ** expo
+
+       return res
+
     @staticmethod
     def parse_factor():
-        if Parser.lexer.next.kind == "INT":
-            res = Parser.lexer.next.value  # <-- corrigido (era Parser.lex)
-            Parser.lexer.select_next()
-            return int(res)
+        # factor := (PLUS factor) | (MINUS factor) | power
 
-        elif Parser.lexer.next.kind == "PLUS":
-            Parser.lexer.select_next()
-            return Parser.parse_factor()
+       if Parser.lexer.next.kind == "PLUS":
+          Parser.lexer.select_next()
+          return Parser.parse_factor()
 
-        elif Parser.lexer.next.kind == "MINUS":
-            Parser.lexer.select_next()
-            return -Parser.parse_factor()
+       elif Parser.lexer.next.kind == "MINUS":
+          Parser.lexer.select_next()
+          return -Parser.parse_factor()
 
-        elif Parser.lexer.next.kind == "OPEN_PAR":
-            Parser.lexer.select_next()
-            res = Parser.parse_expression()
-            if Parser.lexer.next.kind != "CLOSE_PAR":
-                raise Exception("[Parser] error code")
-            Parser.lexer.select_next()  # <-- consome o ')'
-            return res
-
-        else:
-            raise Exception("[Parser] error code")
+       return Parser.parse_power()
 
     @staticmethod
     def parse_term():
