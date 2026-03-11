@@ -18,8 +18,8 @@ class Node(ABC):
         pass
 
 class IntVal(Node):
-    def __init__(self, value : str ):
-        super().__init__(value, [])
+    def __init__(self, value : str,  children ):
+        super().__init__(value, children)
 
     def evaluate(self):
         return self.value
@@ -100,7 +100,7 @@ class Parser:
     @staticmethod
     def parse_factor():
         if Parser.lexer.next.kind == "INT":
-            res = IntVal(int(Parser.lexer.next.value))
+            res = IntVal(int(Parser.lexer.next.value), [])
             Parser.lexer.select_next()
             return res
 
