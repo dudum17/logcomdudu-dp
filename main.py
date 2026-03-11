@@ -41,16 +41,19 @@ class BinOp(Node):
     def __init__(self, value: str, children: list["Node"]):
         super().__init__(value, children)
     def evaluate(self):
-        if self.value == "+":
-            value = self.children[0].evaluate() + self.children[1].evaluate() 
-        elif self.value == "-":
-            value = self.children[0].evaluate() - self.children[1].evaluate() 
-        elif self.value == "*":
-            value = self.children[0].evaluate() * self.children[1].evaluate() 
-        elif self.value == "/":
-            value = self.children[0].evaluate() // self.children[1].evaluate()
-        return value 
+        left = self.children[0].evaluate()
+        right = self.children[1].evaluate()
 
+        if self.value == "+":
+            return left + right
+        elif self.value == "-":
+            return left - right
+        elif self.value == "*":
+            return left * right
+        elif self.value == "/":
+            if right == 0:
+                raise Exception("[Semantic] error code")
+            return left // right
 class Lexer:
     def __init__(self, source, position):
         self.source = source
