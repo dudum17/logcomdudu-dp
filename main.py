@@ -8,7 +8,7 @@ class Token:
         self.kind = kind
         self.value = value
 
-class Prepro:
+class PrePro:
     @staticmethod
     def filter(code):
         return re.sub(r"--[^\n]*", "", code)
@@ -17,10 +17,10 @@ class SymbolTable:
     def __init__(self):
         self.table = {}
     
-    def setter(self, var, value):
+    def set_value(self, var, value):
         self.table[var] = value 
 
-    def getter(self, var):
+    def get_value(self, var):
         if var in self.table:
             return self.table[var]
         else:
@@ -79,10 +79,10 @@ class BinOp(Node):
             return left // right
 
 class Identifier(Node):
-     def __init__(self, value):
-         super().__init__(value, None)
+     def __init__(self, value, children):
+         super().__init__(value, children)
      def evaluate(self, st):
-         return st.getter(self.value)
+         return st.get_value(self.value)
      
 class Print(Node):
     def __init__(self, value, children):
@@ -98,7 +98,7 @@ class Assignment(Node):
     def evaluate(self, st):
         varname = self.children[0].value
         varvalue = self.children[1].evaluate(st)
-        st.setter(varname, varvalue)
+        st.set_value(varname, varvalue)
         return varvalue
 
 class Block(Node):
@@ -110,8 +110,8 @@ class Block(Node):
 
 
 class NoOp(Node):
-    def __init__(self):
-        super().__init__(None, None)
+    def __init__(self, value, children):
+        super().__init__(value, children)
     
     def evaluate(self, st):
         return None
@@ -187,7 +187,7 @@ class Parser:
             Parser.lexer.select_next()
             return res
         elif Parser.lexer.next.kind == "IDEN":
-            res = Identifier(Parser.lexer.next.value)
+            res = Identifier(Parser.lexer.next.value, [])
             Parser.lexer.select_next()
             return res
         elif Parser.lexer.next.kind == "PLUS":
@@ -242,7 +242,7 @@ class Parser:
     @staticmethod
     def parse_statement():
         if Parser.lexer.next.kind == "IDEN":
-            ident = Identifier(Parser.lexer.next.value)
+            ident = Identifier(Parser.lexer.next.value, [])
             Parser.lexer.select_next()
             if Parser.lexer.next.kind == "ASSIGN":
                 Parser.lexer.select_next()
@@ -275,7 +275,7 @@ class Parser:
                 raise Exception("[Parser] error code")
         elif Parser.lexer.next.kind == "END":
             Parser.lexer.select_next()
-            return NoOp()
+            return NoOp(None, [])
         else:
              expr = Parser.parse_expression()
              if Parser.lexer.next.kind == "END":
@@ -295,12 +295,13 @@ class Parser:
          return Block("block", children)
              
     @staticmethod
-    def run(code, st):
+    def run(code):
         Parser.lexer = Lexer(code, 0)
         Parser.lexer.select_next()
         res = Parser.parse_program()
         if Parser.lexer.next.kind != "EOF":
             raise Exception("[Parser] error code")
+        st = SymbolTable()
         return res.evaluate(st)
 
 def main():
@@ -316,9 +317,8 @@ def main():
         print(f"Erro: arquivo '{arquivo}' não encontrado.")
         sys.exit(1)
 
-    tab = SymbolTable()
-    novo_codigo = Prepro.filter(codigo)
-    Parser.run(novo_codigo, tab)
+    novo_codigo = PrePro.filter(codigo)
+    Parser.run(novo_codigo)
     
 
 
