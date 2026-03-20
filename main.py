@@ -91,23 +91,27 @@ class Print(Node):
     def evaluate(self, st):
         val = self.children[0].evaluate(st)
         print(val)
-        return val
+        return None
     
 class Assignment(Node):
     def __init__(self, value: str, children: list["Node"]):
         super().__init__(value, children)
+
     def evaluate(self, st):
         varname = self.children[0].value
         varvalue = self.children[1].evaluate(st)
         st.set_value(varname, varvalue)
-        return varvalue
+        return None
+    
 
 class Block(Node):
     def __init__(self, value: str, children: list["Node"]):
         super().__init__(value, children)
     def evaluate(self, st):
-        for child in self.children:
-            child.evaluate(st)
+       result = None
+       for child in self.children:
+           result = child.evaluate(st)
+       return result
 
 class Factorial(Node):
     def __init__(self, value, children):
@@ -347,20 +351,23 @@ class Parser:
 
 def main():
     if len(sys.argv) != 2:
-        print('Uso: python main.py "expressão"')
         sys.exit(1)
 
-    arquivo = sys.argv[1]
+    codigo = sys.argv[1]
+
     try:
-        with open(arquivo, "r", encoding="utf-8") as f:
-            codigo = f.read()
-    except FileNotFoundError:
-        print(f"Erro: arquivo '{arquivo}' não encontrado.")
+        novo_codigo = PrePro.filter(codigo)
+        Parser.symbol_table = SymbolTable()
+        resultado = Parser.run(novo_codigo)
+
+        if resultado is not None:
+            print(resultado)
+
+    except Exception as e:
+        print(str(e))
         sys.exit(1)
 
-    novo_codigo = PrePro.filter(codigo)
-    Parser.symbol_table = SymbolTable()
-    Parser.run(novo_codigo)
+
     
 
 
