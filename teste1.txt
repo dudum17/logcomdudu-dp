@@ -1,0 +1,4 @@
+--comentario
+x = 2 + 3
+y = x * 4
+print(y)
