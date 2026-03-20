@@ -179,6 +179,7 @@ class Lexer:
 
 class Parser:
     lexer = None
+    symbol_table = None
 
     @staticmethod
     def parse_factor():
@@ -301,8 +302,7 @@ class Parser:
         res = Parser.parse_program()
         if Parser.lexer.next.kind != "EOF":
             raise Exception("[Parser] error code")
-        st = SymbolTable()
-        return res.evaluate(st)
+        return res.evaluate(Parser.symbol_table)
 
 def main():
     if len(sys.argv) != 2:
@@ -318,6 +318,7 @@ def main():
         sys.exit(1)
 
     novo_codigo = PrePro.filter(codigo)
+    Parser.symbol_table = SymbolTable()
     Parser.run(novo_codigo)
     
 
