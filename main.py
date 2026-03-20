@@ -58,6 +58,7 @@ class UnOp(Node):
             return val
         elif self.value == "-":
             return -(val)
+
         
 
 class BinOp(Node):
@@ -108,6 +109,23 @@ class Block(Node):
         for child in self.children:
             child.evaluate(st)
 
+class Factorial(Node):
+    def __init__(self, value, children):
+        super().__init__(value, children)
+
+    def evaluate(self, st):
+        val = self.children[0].evaluate(st)
+
+        if val < 0:
+            raise Exception("[Semantic] error code")
+
+        result = 1
+        for i in range(1, val + 1):
+            result *= i
+
+        return result
+
+
 
 class NoOp(Node):
     def __init__(self, value, children):
@@ -155,6 +173,9 @@ class Lexer:
        elif caracter == "=":
             self.next = Token("ASSIGN", "=")
             self.position += 1
+       elif caracter == "!":
+            self.next = Token("FACT", "!")
+            self.position += 1
        elif caracter == "\n":
             self.next = Token("END", " ")
             self.position += 1
@@ -181,33 +202,53 @@ class Parser:
     lexer = None
     symbol_table = None
 
+
+
     @staticmethod
     def parse_factor():
-        if Parser.lexer.next.kind == "INT":
-            res = IntVal(int(Parser.lexer.next.value), [])
-            Parser.lexer.select_next()
-            return res
-        elif Parser.lexer.next.kind == "IDEN":
-            res = Identifier(Parser.lexer.next.value, [])
-            Parser.lexer.select_next()
-            return res
-        elif Parser.lexer.next.kind == "PLUS":
-            Parser.lexer.select_next()
-            res = UnOp("+", Parser.parse_factor())
-            return res
-        elif Parser.lexer.next.kind == "MINUS":
-             Parser.lexer.select_next()
-             res = UnOp("-", Parser.parse_factor())
-             return res
-        elif Parser.lexer.next.kind == "OPEN_PAR":
-            Parser.lexer.select_next()
-            res = Parser.parse_expression()
-            if Parser.lexer.next.kind != "CLOSE_PAR":
-                raise Exception("[Parser] error code")
-            Parser.lexer.select_next()
-            return res
-        else:
+      if Parser.lexer.next.kind == "PLUS":
+        Parser.lexer.select_next()
+        return UnOp("+", Parser.parse_factorial())
+
+      elif Parser.lexer.next.kind == "MINUS":
+        Parser.lexer.select_next()
+        return UnOp("-", Parser.parse_factorial())
+
+      else:
+        return Parser.parse_factorial()
+
+
+    @staticmethod
+    def parse_factorial():
+        res = Parser.parse_primary()
+        if Parser.lexer.next.kind == "FACT":
+           Parser.lexer.select_next()
+           res = Factorial("!", [res])
+        return res
+        
+
+    @staticmethod
+    def parse_primary():
+      if Parser.lexer.next.kind == "INT":
+        res = IntVal(int(Parser.lexer.next.value), [])
+        Parser.lexer.select_next()
+        return res
+
+      elif Parser.lexer.next.kind == "IDEN":
+        res = Identifier(Parser.lexer.next.value, [])
+        Parser.lexer.select_next()
+        return res
+
+      elif Parser.lexer.next.kind == "OPEN_PAR":
+        Parser.lexer.select_next()
+        res = Parser.parse_expression()
+        if Parser.lexer.next.kind != "CLOSE_PAR":
             raise Exception("[Parser] error code")
+        Parser.lexer.select_next()
+        return res
+
+      else:
+        raise Exception("[Parser] error code")
 
     @staticmethod
     def parse_term():
