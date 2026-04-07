@@ -114,7 +114,7 @@ class Assignment(Node):
         return varvalue
     
 
-class IF (Node):
+class If (Node):
     def __init__(self, value: str, children: list["Node"]):
         super().__init__(value, children)
     def evaluate(self, st):
@@ -125,7 +125,7 @@ class IF (Node):
             return self.children[2].evaluate(st)
         return None
     
-class WHILE (Node):
+class While (Node):
     def __init__(self, value: str, children: list["Node"]):
          super().__init__(value, children)
     
@@ -136,15 +136,14 @@ class WHILE (Node):
         return res
     
 class Read(Node):
-     def __init__(self):
-        super().__init__("read", None)
+     def __init__(self, value, children):
+        super().__init__(value, children)
 
-     def evaluate(st):
-         try:
-             valor = int(input())
-             return valor
-         except ValueError:
-             raise Exception("Entrada inválida: esperado um número inteiro")    
+     def evaluate(self, st):
+        try:
+            return int(input())
+        except ValueError:
+            raise Exception("[Semantic] error code")
 
 class Block(Node):
     def __init__(self, value: str, children: list["Node"]):
@@ -257,7 +256,7 @@ class Parser:
     symbol_table = None
 
     @staticmethod
-    def parse_rexpression():
+    def parse_rel_expression():
         left = Parser.parse_expression()
         if Parser.lexer.next.kind in ("EQ", "LT", "GT"):
              op = Parser.lexer.next.kind
@@ -274,19 +273,19 @@ class Parser:
 
     
     @staticmethod
-    def parse_bterm():
-        res = Parser.parse_rexpression()
+    def parse_bool_term():
+        res = Parser.parse_rel_expression()
         while Parser.lexer.next.kind == "AND":
             Parser.lexer.select_next()
-            res = BinOp("and", [res, Parser.parse_rexpression()])
+            res = BinOp("and", [res, Parser.parse_rel_expression()])
         return res
 
     @staticmethod
-    def parse_bexpression():
-        res = Parser.parse_bterm()
+    def parse_bool_expression():
+        res = Parser.parse_bool_term()
         while Parser.lexer.next.kind == "OR":
             Parser.lexer.select_next()
-            res = BinOp("or", [res, Parser.parse_bterm()])
+            res = BinOp("or", [res, Parser.parse_bool_term()])
         return res
 
 
@@ -314,11 +313,14 @@ class Parser:
             return res
         elif Parser.lexer.next.kind == "OPEN_PAR":
             Parser.lexer.select_next()
-            res = Parser.parse_bexpression()
+            res = Parser.parse_bool_expression()
             if Parser.lexer.next.kind != "CLOSE_PAR":
                 raise Exception("[Parser] error code")
             Parser.lexer.select_next()
             return res
+        elif Parser.lexer.next.kind == "READ":
+            Parser.lexer.select_next()
+            return ("read", [])
         else:
             raise Exception("[Parser] error code")
 
@@ -360,7 +362,7 @@ class Parser:
             Parser.lexer.select_next()
             if Parser.lexer.next.kind == "ASSIGN":
                 Parser.lexer.select_next()
-                expr = Parser.parse_bexpression()
+                expr = Parser.parse_bool_expression()
                 if Parser.lexer.next.kind == "END":
                     Parser.lexer.select_next()
                     return Assignment("=", [ident, expr])
@@ -376,7 +378,7 @@ class Parser:
             if Parser.lexer.next.kind != "OPEN_PAR":
                 raise Exception("[Parser] error code")
             Parser.lexer.select_next()
-            expr = Parser.parse_bexpression()
+            expr = Parser.parse_bool_expression()
             if Parser.lexer.next.kind != "CLOSE_PAR":
                 raise Exception("[Parser] error code")
             Parser.lexer.select_next()
@@ -389,7 +391,7 @@ class Parser:
                 raise Exception("[Parser] error code")
         elif Parser.lexer.next.kind == "WHILE":
              Parser.lexer.select_next()
-             cond = Parser.parse_bexpression()
+             cond = Parser.parse_bool_expression()
 
              if Parser.lexer.next.kind != "OPEN_BRA":   # do
                raise Exception("[Parser] error code")
@@ -402,10 +404,10 @@ class Parser:
                   children.append(stmt)
 
              Parser.lexer.select_next()   # consome o end
-             return WHILE("while", [cond, Block("block", children)])
+             return While("while", [cond, Block("block", children)])
         elif  Parser.lexer.next.kind == "IF":
             Parser.lexer.select_next()
-            cond = Parser.parse_bexpression()
+            cond = Parser.parse_bool_expression()
 
             if Parser.lexer.next.kind != "OPEN_IF_BRA":   # then
               raise Exception("[Parser] error code")
@@ -434,7 +436,7 @@ class Parser:
                 raise Exception("[Parser] error code")
 
             Parser.lexer.select_next()   # consome o end
-            return IF("if", children)
+            return If("if", children)
         
         elif Parser.lexer.next.kind == "OPEN_BRA":
             return Parser.parse_block()
@@ -442,7 +444,7 @@ class Parser:
             Parser.lexer.select_next()
             return NoOp(None, [])
         else:
-             expr = Parser.parse_bexpression()
+             expr = Parser.parse_bool_expression()
              if Parser.lexer.next.kind == "END":
                   Parser.lexer.select_next()
                   return expr
