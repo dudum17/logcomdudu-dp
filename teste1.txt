@@ -1,2 +1,14 @@
---comentario
-print((-3)!)
+i = 1
+n = 5
+f = 1
+
+if (n < 2) then
+    f = 1
+else
+    while (i < n or i == n) do
+        f = f * i
+        i = i + 1
+    end
+end
+
+print(f)
