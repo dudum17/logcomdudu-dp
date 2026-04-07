@@ -320,7 +320,13 @@ class Parser:
             return res
         elif Parser.lexer.next.kind == "READ":
             Parser.lexer.select_next()
-            return ("read", [])
+            if Parser.lexer.next.kind != "OPEN_PAR":
+               raise Exception("[Parser] error code")
+            Parser.lexer.select_next()
+            if Parser.lexer.next.kind != "CLOSE_PAR":
+              raise Exception("[Parser] error code")
+            Parser.lexer.select_next()
+            return Read("read", [])
         else:
             raise Exception("[Parser] error code")
 
