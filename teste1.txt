@@ -1,1 +1,2 @@
-local i string = read()
+-- Unexpected EOF
+local e string = "a

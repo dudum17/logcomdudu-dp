@@ -182,10 +182,14 @@ class Print(Node):
     def __init__(self, value, children):
         super().__init__(value, [children])
     def evaluate(self, st):
-        val = self.children[0].evaluate(st)
-        print(val.value)
-        return val
+       val = self.children[0].evaluate(st)
 
+       if val.type == "boolean":
+            print("true" if val.value else "false")
+       else:
+            print(val.value)
+
+       return val
 class Assignment(Node):
     def __init__(self, value: str, children: list["Node"]):
         super().__init__(value, children)
@@ -339,7 +343,7 @@ class Lexer:
                    str_val += self.source[self.position]
                    self.position += 1
              if self.position >= len(self.source):
-                   raise Exception("String não terminada")
+                   raise Exception("[Lexer] error code")
              self.position += 1  # consome a aspa final
              self.next = Token("STR", str_val)   
        elif caracter.isalpha() or caracter == "_":
