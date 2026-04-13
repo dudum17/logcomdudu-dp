@@ -82,12 +82,26 @@ class UnOp(Node):
 
     def evaluate(self, st):
         val = self.children[0].evaluate(st)
+
+        if not isinstance(val, Variable):
+            raise Exception("[Semantic] error code")
+
         if self.value == "+":
-            return val
+            if val.type == "number":
+                return Variable("number", val.value)
+            raise Exception("[Semantic] error code")
+
         elif self.value == "-":
-            return -(val)
+            if val.type == "number":
+                return Variable("number", -val.value)
+            raise Exception("[Semantic] error code")
+
         elif self.value == "not":
-            return not(val)
+            if val.type == "boolean":
+                return Variable("boolean", not val.value)
+            raise Exception("[Semantic] error code")
+
+        raise Exception("[Semantic] error code")
 
 
 class BinOp(Node):
@@ -136,14 +150,23 @@ class BinOp(Node):
             if left.type == right.type:
                 return Variable("boolean", left.value == right.value)
             raise Exception("[Semantic] error code")
+        
+
+        elif self.value == "..":
+           return Variable("string", str(left.value) + str(right.value))
 
         elif self.value == "<":
-            if left.type == "number" and right.type == "number":
-                return Variable("boolean", left.value < right.value)
-            raise Exception("[Semantic] error code")
+          if left.type == "number" and right.type == "number":
+            return Variable("boolean", left.value < right.value)
+          if left.type == "string" and right.type == "string":
+            return Variable("boolean", left.value < right.value)
+          raise Exception("[Semantic] error code")
+
 
         elif self.value == ">":
             if left.type == "number" and right.type == "number":
+              return Variable("boolean", left.value > right.value)
+            if left.type == "string" and right.type == "string":
                 return Variable("boolean", left.value > right.value)
             raise Exception("[Semantic] error code")
 
@@ -225,7 +248,7 @@ class Read(Node):
 
      def evaluate(self, st):
         try:
-            return int(input())
+            return Variable("number", int(input()))
         except ValueError:
             raise Exception("[Semantic] error code")
 
@@ -296,6 +319,12 @@ class Lexer:
        elif caracter == "\n":
             self.next = Token("END", " ")
             self.position += 1
+       elif caracter == ".":
+         if self.position + 1 < len(self.source) and self.source[self.position:self.position+2] == "..":
+           self.next = Token("CONCAT", "..")
+           self.position += 2
+         else:
+            raise Exception("[Lexer] error code")
        elif caracter.isdigit():
             num = ""
             while self.position < len(self.source) and self.source[self.position].isdigit():
@@ -460,14 +489,16 @@ class Parser:
     def parse_expression():
              res = Parser.parse_term()
 
-             while Parser.lexer.next.kind in ("PLUS", "MINUS"):
-               op = Parser.lexer.next.kind
-               Parser.lexer.select_next()
+             while Parser.lexer.next.kind in ("PLUS", "MINUS", "CONCAT"):
+                op = Parser.lexer.next.kind
+                Parser.lexer.select_next()
 
-               if op == "PLUS":
+                if op == "PLUS":
                    res = BinOp("+", [res, Parser.parse_term()])
-               elif op == "MINUS":
+                elif op == "MINUS":
                     res = BinOp("-", [res, Parser.parse_term()])
+                elif op == "CONCAT":
+                    res = BinOp("..", [res, Parser.parse_term()])
 
              return res
 

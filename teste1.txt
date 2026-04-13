@@ -1,4 +1,1 @@
-local nome string = "Edu"
-local ok boolean = true
-print(nome)
-print(ok)
+local i string = read()
