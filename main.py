@@ -153,7 +153,12 @@ class BinOp(Node):
         
 
         elif self.value == "..":
-           return Variable("string", str(left.value) + str(right.value))
+           def to_string(var):
+             if var.type == "boolean":
+                return "true" if var.value else "false"
+             return str(var.value)
+
+           return Variable("string", to_string(left) + to_string(right))
 
         elif self.value == "<":
           if left.type == "number" and right.type == "number":
