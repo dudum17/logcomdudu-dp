@@ -17,7 +17,7 @@ class SymbolTable:
     def __init__(self):
         self.table = {}
 
-    def settable(self, name, value_var):
+    def set_value(self, name, value_var):
         if name not in self.table:
             raise Exception("[Semantic] error code")
         if not isinstance(value_var, Variable):
@@ -169,7 +169,7 @@ class Assignment(Node):
     def evaluate(self, st):
         varname = self.children[0].value
         varvalue = self.children[1].evaluate(st)
-        st.settable(varname, varvalue)
+        st.set_value(varname, varvalue)
         return varvalue
     
 
