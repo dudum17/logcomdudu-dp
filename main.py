@@ -17,9 +17,21 @@ class SymbolTable:
     def __init__(self):
         self.table = {}
 
-    def set_value(self, var, value):
-        self.table[var] = value 
-
+    def settable(self, name, value_var):
+        if name not in self.table:
+            raise Exception("[Semantic] error code")
+        if not isinstance(value_var, Variable):
+            raise Exception("[Semantic] error code")
+        var = self.table[name]
+        if var.type != value_var.type:
+            raise Exception("[Semantic] error code")
+        var.value = value_var.value
+    
+    def create_variable(self, name, vtype, value):
+        if name in self.table:
+            raise Exception("[Semantic] error code")
+        self.table[name] = Variable(vtype, value)
+    
     def get_value(self, var):
         if var in self.table:
             return self.table[var]
@@ -28,8 +40,10 @@ class SymbolTable:
 
 
 class Variable:
-    def __init__(self, value):
+     def __init__(self, type, value):
+        self.type = type
         self.value = value
+        
 
 class Node(ABC):
     def __init__(self, value : str, children : list["Node"]):
@@ -45,7 +59,21 @@ class IntVal(Node):
         super().__init__(value, children)
 
     def evaluate(self, st):
-        return self.value
+        return Variable("number", self.value)
+
+class BoolVal(Node):
+    def __init__(self, value : str,  children ):
+        super().__init__(value, children)
+
+    def evaluate(self, st):
+        return Variable("boolean", self.value)
+    
+class StringVal(Node):
+    def __init__(self, value : str,  children ):
+        super().__init__(value, children)
+
+    def evaluate(self, st):
+        return Variable("string", self.value)
 
 
 class UnOp(Node):
@@ -69,26 +97,57 @@ class BinOp(Node):
         left = self.children[0].evaluate(st)
         right = self.children[1].evaluate(st)
 
+        if not isinstance(left, Variable) or not isinstance(right, Variable):
+            raise Exception("[Semantic] error code")
+
         if self.value == "+":
-            return left + right
+            if left.type == "number" and right.type == "number":
+                return Variable("number", left.value + right.value)
+            raise Exception("[Semantic] error code")
+
         elif self.value == "-":
-            return left - right
+            if left.type == "number" and right.type == "number":
+                return Variable("number", left.value - right.value)
+            raise Exception("[Semantic] error code")
+
         elif self.value == "*":
-            return left * right
+            if left.type == "number" and right.type == "number":
+                return Variable("number", left.value * right.value)
+            raise Exception("[Semantic] error code")
+
         elif self.value == "/":
-            if right == 0:
-                raise Exception("[Semantic] error code")
-            return left // right
+            if left.type == "number" and right.type == "number":
+                if right.value == 0:
+                    raise Exception("[Semantic] error code")
+                return Variable("number", left.value // right.value)
+            raise Exception("[Semantic] error code")
+
         elif self.value == "and":
-             return left and right
+            if left.type == "boolean" and right.type == "boolean":
+                return Variable("boolean", left.value and right.value)
+            raise Exception("[Semantic] error code")
+
         elif self.value == "or":
-            return left or right
+            if left.type == "boolean" and right.type == "boolean":
+                return Variable("boolean", left.value or right.value)
+            raise Exception("[Semantic] error code")
+
         elif self.value == "==":
-             return left == right
+            if left.type == right.type:
+                return Variable("boolean", left.value == right.value)
+            raise Exception("[Semantic] error code")
+
         elif self.value == "<":
-             return left < right
+            if left.type == "number" and right.type == "number":
+                return Variable("boolean", left.value < right.value)
+            raise Exception("[Semantic] error code")
+
         elif self.value == ">":
-             return left > right
+            if left.type == "number" and right.type == "number":
+                return Variable("boolean", left.value > right.value)
+            raise Exception("[Semantic] error code")
+
+        raise Exception("[Semantic] error code")
 
 class Identifier(Node):
      def __init__(self, value, children):
@@ -101,7 +160,7 @@ class Print(Node):
         super().__init__(value, [children])
     def evaluate(self, st):
         val = self.children[0].evaluate(st)
-        print(val)
+        print(val.value)
         return val
 
 class Assignment(Node):
@@ -110,7 +169,7 @@ class Assignment(Node):
     def evaluate(self, st):
         varname = self.children[0].value
         varvalue = self.children[1].evaluate(st)
-        st.set_value(varname, varvalue)
+        st.settable(varname, varvalue)
         return varvalue
     
 
@@ -118,22 +177,47 @@ class If (Node):
     def __init__(self, value: str, children: list["Node"]):
         super().__init__(value, children)
     def evaluate(self, st):
-        condicao = self.children[0].evaluate(st)
-        if condicao:
+       condicao = self.children[0].evaluate(st)
+       if condicao.type != "boolean":
+            raise Exception("[Semantic] error code")
+       if condicao.value:
             return self.children[1].evaluate(st)
-        elif len(self.children) > 2:
+       elif len(self.children) > 2:
             return self.children[2].evaluate(st)
-        return None
-    
+       return None
 class While (Node):
     def __init__(self, value: str, children: list["Node"]):
          super().__init__(value, children)
     
     def evaluate(self, st):
         res = None
-        while self.children[0].evaluate(st):
+        condicao = self.children[0].evaluate(st)
+
+        if condicao.type != "boolean":
+            raise Exception("[Semantic] error code")
+
+        while condicao.value:
             res = self.children[1].evaluate(st)
+            condicao = self.children[0].evaluate(st)
+
+            if condicao.type != "boolean":
+                raise Exception("[Semantic] error code")
+
         return res
+class VarDec(Node):
+    def __init__(self, value, children):
+        super().__init__(value, children)
+    def evaluate(self, st):
+        name = self.children[0].value
+        if len(self.children) == 1:
+            st.create_variable(name, self.value, None)
+            return None
+        else:
+            init_val: Variable  = self.children[1].evaluate(st)
+            if init_val.type != self.value:
+                raise Exception("[Semantic] error code")
+            st.create_variable(name, self.value, init_val.value)
+            return init_val
     
 class Read(Node):
      def __init__(self, value, children):
@@ -218,6 +302,17 @@ class Lexer:
                 num += self.source[self.position]
                 self.position += 1
             self.next = Token("INT", num)
+       elif caracter == '"' or caracter == "'":
+             quote = caracter  # guarda o tipo de aspa usada
+             self.position += 1
+             str_val = ""
+             while self.position < len(self.source) and self.source[self.position] != quote:
+                   str_val += self.source[self.position]
+                   self.position += 1
+             if self.position >= len(self.source):
+                   raise Exception("String não terminada")
+             self.position += 1  # consome a aspa final
+             self.next = Token("STR", str_val)   
        elif caracter.isalpha() or caracter == "_":
             ident = ""
             while (self.position < len(self.source)
@@ -246,6 +341,12 @@ class Lexer:
                 self.next = Token("OPEN_BRA", ident)
             elif ident == "end":
                 self.next = Token("CLOSE_BRA", ident)
+            elif ident == "local":
+                self.next = Token("VAR", ident)
+            elif ident in ("true", "false"):
+                self.next = Token("BOOL", ident)
+            elif ident in ("string", "number", "boolean"):
+                self.next = Token("TYPE", ident)
             else:
                 self.next = Token("IDEN", ident)
        else:
@@ -327,6 +428,16 @@ class Parser:
               raise Exception("[Parser] error code")
             Parser.lexer.select_next()
             return Read("read", [])
+        elif Parser.lexer.next.kind == "STR":
+           
+           res = StringVal(Parser.lexer.next.value, [])
+           Parser.lexer.select_next()
+           return res
+        elif Parser.lexer.next.kind == "BOOL":
+           val = True if Parser.lexer.next.value == "true" else False
+           res = BoolVal(val, [])
+           Parser.lexer.select_next()
+           return res
         else:
             raise Exception("[Parser] error code")
 
@@ -363,6 +474,40 @@ class Parser:
 
     @staticmethod
     def parse_statement():
+
+        if Parser.lexer.next.kind == "VAR":
+          Parser.lexer.select_next()  # consome 'local'
+
+          if Parser.lexer.next.kind != "IDEN":
+              raise Exception("[Parser] error code")
+          ident = Identifier(Parser.lexer.next.value, [])
+          Parser.lexer.select_next()
+
+          if Parser.lexer.next.kind != "TYPE":
+              raise Exception("[Parser] error code")
+          vtype = Parser.lexer.next.value
+          Parser.lexer.select_next()
+
+          if Parser.lexer.next.kind == "ASSIGN":
+            Parser.lexer.select_next()
+            expr = Parser.parse_bool_expression()
+
+            if Parser.lexer.next.kind == "END":
+                Parser.lexer.select_next()
+                return VarDec(vtype, [ident, expr])
+            elif Parser.lexer.next.kind == "EOF":
+                return VarDec(vtype, [ident, expr])
+            else:
+                raise Exception("[Parser] error code")
+          else:
+             if Parser.lexer.next.kind == "END":
+                Parser.lexer.select_next()
+                return VarDec(vtype, [ident])
+             elif Parser.lexer.next.kind == "EOF":
+                return VarDec(vtype, [ident])
+             else:
+                raise Exception("[Parser] error code")
+
         if Parser.lexer.next.kind == "IDEN":
             ident = Identifier(Parser.lexer.next.value, [])
             Parser.lexer.select_next()
