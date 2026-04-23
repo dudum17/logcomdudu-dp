@@ -1,71 +1,10 @@
-do -- Teste geral
-  local x_1 number
-  x_1 = read()
-  
-  print(x_1)
-  
-  if ((x_1 > 1  and   not  not  not (x_1 < 1))  or  x_1 == 3) then
-    x_1 = 2
-  end
-  
-  local x number = 3+6/3   *  2 -+-  +  2*4/2 + 0/1 -((6+ ((4)))/(2)) -- Teste -- Teste 2
-  local y_1 number = 3
-  y_1 = y_1 + x_1
-  local z__ number
-  z__ = x + y_1
-  
-  if (x_1 == 2) then
-    x_1 = 2
-  end
-  
-  if (x_1 == 3) then
-    x_1 = 2
-   else 
-    x_1 = 3
-  end
-  
-  x_1 = 0
-  while (x_1 < 1  or  x == 2) do
-    print(x_1)
-    x_1 = x_1 + 1
-  end
-  
-  
-   do
-do
- end
-end -- Teste de colchetes
-  -- Saida final
-  print(x_1)
-  print(x)
-  print(z__+1)
-  
-  -- All int operations
-  local y number = 2
-  local z number
-  z = (y - 1)
-  print(y+z)
-  print(y-z)
-  print(y*z)
-  print(y/z)
-  print(y == z)
-  print(y < z)
-  print(y > z)
-  
-  -- All str operations 
-  local a string
-  local b string
-  
-  x_1 = 1
-  y = 1 
-  z = 2
-  a = "abc"
-  b = "def"
-  print(a..b)
-  print(a..x_1)
-  print(x_1..a)
-  print(a..(x_1==1))
-  print(a == a)
-  print(a < b)
-  print(a > b)
-end -- Teste do filter
+local i number
+local n number
+local f number = 1
+n = read()
+i = 2
+while (i < n + 1) do
+  f = f * i
+  i = i + 1
+end
+print(f)
