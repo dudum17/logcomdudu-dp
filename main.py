@@ -91,7 +91,7 @@ class Node(ABC):
     def __init__(self, value : str, children : list["Node"]):
         self.value = value
         self.children = children
-        self.id = Node.newId()
+        self.id = Node.new_id()
 
     @abstractmethod
     def evaluate(self, st : SymbolTable):
@@ -102,7 +102,7 @@ class Node(ABC):
         pass
 
     @staticmethod
-    def newId():
+    def new_id():
         Node.id += 1
         return Node.id
 
