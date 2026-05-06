@@ -16,9 +16,9 @@ _start:
 
   ; aqui começa o codigo gerado:
 
-  sub esp, 4 ; var b int [EBP-4]
-  mov eax, 5
-  mov [ebp-4], eax ; b = 5
+  sub esp, 4 ; var A int [EBP-4]
+  mov eax, 2
+  mov [ebp-4], eax ; A = 2
 
   ; aqui termina o código gerado
 

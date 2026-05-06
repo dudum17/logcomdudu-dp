@@ -1104,7 +1104,7 @@ def main():
     saida = os.path.splitext(arquivo)[0] + ".asm"
     Code.dump(saida)
 
-    print(f"Arquivo gerado: {saida}")
+    #print(f"Arquivo gerado: {saida}")
 
 
 if __name__ == "__main__":
