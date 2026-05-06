@@ -827,38 +827,7 @@ class Parser:
     def parse_statement():
 
         if Parser.lexer.next.kind == "VAR":
-          Parser.lexer.select_next()  # consome 'local'
-
-          if Parser.lexer.next.kind != "IDEN":
-              raise Exception("[Parser] error code")
-          ident = Identifier(Parser.lexer.next.value, [])
-          Parser.lexer.select_next()
-
-          if Parser.lexer.next.kind != "TYPE":
-              raise Exception("[Parser] error code")
-          vtype = Parser.lexer.next.value
-          Parser.lexer.select_next()
-
-          if Parser.lexer.next.kind == "ASSIGN":
-            Parser.lexer.select_next()
-            expr = Parser.parse_bool_expression()
-
-            if Parser.lexer.next.kind == "END":
-                Parser.lexer.select_next()
-                return VarDec(vtype, [ident, expr])
-            elif Parser.lexer.next.kind == "EOF":
-                return VarDec(vtype, [ident, expr])
-            else:
-                raise Exception("[Parser] error code")
-          else:
-             if Parser.lexer.next.kind == "END":
-                Parser.lexer.select_next()
-                return VarDec(vtype, [ident])
-             elif Parser.lexer.next.kind == "EOF":
-                return VarDec(vtype, [ident])
-             else:
-                raise Exception("[Parser] error code")
-
+            return Parser.parse_var_declaration()
         if Parser.lexer.next.kind == "IDEN":
             ident = Identifier(Parser.lexer.next.value, [])
             Parser.lexer.select_next()
@@ -1005,6 +974,35 @@ class Parser:
             raise Exception("[Parser] error code")
         Parser.lexer.select_next()
         return Block("block", children)
+    @staticmethod
+    def parse_var_declaration():
+       Parser.lexer.select_next()  # consome 'local'
+
+       if Parser.lexer.next.kind != "IDEN":
+           raise Exception("[Parser] error code")
+
+       ident = Identifier(Parser.lexer.next.value, [])
+       Parser.lexer.select_next()
+
+       if Parser.lexer.next.kind != "TYPE":
+           raise Exception("[Parser] error code")
+
+       vtype = Parser.lexer.next.value
+       Parser.lexer.select_next()
+
+       children = [ident]
+
+       if Parser.lexer.next.kind == "ASSIGN":
+          Parser.lexer.select_next()
+          children.append(Parser.parse_bool_expression())
+
+       if Parser.lexer.next.kind == "END":
+          Parser.lexer.select_next()
+          return VarDec(vtype, children)
+       elif Parser.lexer.next.kind == "EOF":
+          return VarDec(vtype, children)
+
+       raise Exception("[Parser] error code")
     
     @staticmethod
     def parse_func_declaration():
