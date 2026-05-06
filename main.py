@@ -15,38 +15,52 @@ class PrePro:
         return re.sub(r"--[^\n]*", "", code)
 
 class SymbolTable:
-    def __init__(self):
+    def __init__(self, parent = None):
         self.table = {}
         self.counter = 0 
+        self.parent = parent
 
     def set_value(self, name, value_var):
-        if name not in self.table:
-            raise Exception("[Semantic] error code")
-        if not isinstance(value_var, Variable):
-            raise Exception("[Semantic] error code")
-        var = self.table[name]
-        if var.type != value_var.type:
-            raise Exception("[Semantic] error code")
-        var.value = value_var.value
+        if name in self.table:
+            if not isinstance(value_var, Variable):
+                raise Exception("[Semantic] error code")
+
+            var = self.table[name]
+
+            if var.type != value_var.type:
+                raise Exception("[Semantic] error code")
+
+            var.value = value_var.value
+            return
+
+        if self.parent is not None:
+            self.parent.set_value(name, value_var)
+            return
+
+        raise Exception("[Semantic] error code")
     
-    def create_variable(self, name, vtype, value):
+    def create_variable(self, name, vtype, value,  is_function = False):
         if name in self.table:
             raise Exception("[Semantic] error code")
         self.counter += 4
-        self.table[name] = Variable(vtype, value, -self.counter)
+        self.table[name] = Variable(vtype, value, -self.counter, is_function)
     
     def get_value(self, var):
         if var in self.table:
             return self.table[var]
-        else:
-            raise Exception("[Semantic] error code")
+
+        if self.parent is not None:
+            return self.parent.get_value(var)
+
+        raise Exception("[Semantic] error code")
 
 
 class Variable:
-     def __init__(self, type, value, shift = None):
+     def __init__(self, type, value, shift = None, is_function = False):
         self.type = type
         self.value = value
         self.shift = shift
+        self.is_function = is_function
 
 class Code:
     instructions = []
@@ -337,9 +351,13 @@ class If (Node):
        if condicao.type != "boolean":
             raise Exception("[Semantic] error code")
        if condicao.value:
-            return self.children[1].evaluate(st)
+            res = self.children[1].evaluate(st)
+            if isinstance(res, tuple) and res[0] == "return":
+                return res
        elif len(self.children) > 2:
-            return self.children[2].evaluate(st)
+             res = self.children[2].evaluate(st)
+             if isinstance(res, tuple) and res[0] == "return":
+                  return res
        return None
     def generate(self, st):
         label_else = f"else_{self.id}"
@@ -374,6 +392,8 @@ class While (Node):
 
         while condicao.value:
             res = self.children[1].evaluate(st)
+            if isinstance(res, tuple) and res[0] == "return":
+                  return res
             condicao = self.children[0].evaluate(st)
 
             if condicao.type != "boolean":
@@ -417,7 +437,82 @@ class VarDec(Node):
             self.children[1].generate(st)
             Code.append(f"  mov [ebp{var.shift}], eax ; {name} = "
                         f"{self.children[1].value if isinstance(self.children[1], IntVal) else ''}")
-    
+
+
+class FuncDec(Node):
+    def __init__(self, value: str, children: list["Node"]):
+        super().__init__(value, children)
+    def evaluate(self, st):
+        func_name = self.children[0].value
+
+        st.create_variable(func_name, "function", self, True)
+
+        return None
+    def generate(self, st):
+        pass
+class FuncCall(Node):
+    def __init__(self, value: str, children: list["Node"]):
+        super().__init__(value, children)
+    def evaluate(self, st):
+        func_var = st.get_value(self.value)
+
+        if func_var.type != "function":
+            raise Exception("[Semantic] error code")
+
+        func_node = func_var.value
+
+        return_type = func_node.value
+        params = func_node.children[1:-1]
+        body = func_node.children[-1]
+
+        if len(self.children) != len(params):
+            raise Exception("[Semantic] error code")
+
+        func_st = SymbolTable(st)
+
+        for param_node, arg_node in zip(params, self.children):
+            param_name = param_node.children[0].value
+            param_type = param_node.value
+
+            arg_value = arg_node.evaluate(st)
+
+            if arg_value.type != param_type:
+                raise Exception("[Semantic] error code")
+
+            func_st.create_variable(param_name, param_type, arg_value.value)
+
+        result = body.evaluate(func_st)
+
+        if result is None:
+           if return_type == "void":
+               return Variable("void", None)
+           raise Exception("[Semantic] error code")
+        if not (isinstance(result, tuple) and result[0] == "return"):
+            raise Exception("[Semantic] error code")
+
+        return_value = result[1]
+
+
+        if return_type == "void":
+           raise Exception("[Semantic] error code")
+
+
+        if return_value.type != return_type:
+            raise Exception("[Semantic] error code")
+
+        return return_value
+    def generate(self, st):
+        pass
+
+class Return(Node):
+    def __init__(self, value: str, children: list["Node"]):
+        super().__init__(value, children)
+    def evaluate(self, st):
+        val = self.children[0].evaluate(st)
+        return ("return", val)
+    def generate(self, st):
+        pass
+
 class Read(Node):
      def __init__(self, value, children):
         super().__init__(value, children)
@@ -439,8 +534,18 @@ class Block(Node):
     def __init__(self, value: str, children: list["Node"]):
         super().__init__(value, children)
     def evaluate(self, st):
-        for child in self.children:
-            child.evaluate(st)
+         current_st = st
+
+         if self.value != "program":
+            current_st = SymbolTable(st)
+
+         for child in self.children:
+            res = child.evaluate(current_st)
+
+            if isinstance(res, tuple) and res[0] == "return":
+               return res
+
+         return None
     def generate(self, st):
         for child in self.children:
             child.generate(st)
@@ -498,6 +603,9 @@ class Lexer:
        elif caracter == '<':
             self.next = Token("LT", '<')
             self.position += 1
+       elif caracter == ",":
+            self.next = Token("COMMA", ',')
+            self.position += 1
        elif caracter == "=":
             if self.position + 1 < len(self.source) and self.source[self.position:self.position+2] == "==":
                 self.next = Token("EQ", "==")
@@ -551,6 +659,10 @@ class Lexer:
                 self.next = Token("WHILE", ident)
             elif ident == "else":
                 self.next = Token("ELSE", ident)
+            elif ident == "function":
+                self.next = Token("FUNC", ident)
+            elif ident == "return":
+                self.next = Token("RETURN", ident)
             elif ident == "read":
                 self.next = Token("READ", ident)
             elif ident == "then":
@@ -588,7 +700,6 @@ class Parser:
              elif op == "GT":
                   return BinOp(">", [left, rigth])
         return left
-                 
 
     
     @staticmethod
@@ -615,9 +726,29 @@ class Parser:
             Parser.lexer.select_next()
             return res
         elif Parser.lexer.next.kind == "IDEN":
-            res = Identifier(Parser.lexer.next.value, [])
+            ident_name = Parser.lexer.next.value
             Parser.lexer.select_next()
-            return res
+
+            if Parser.lexer.next.kind  == "OPEN_PAR":
+                Parser.lexer.select_next()
+
+                args = []
+
+                if Parser.lexer.next.kind != "CLOSE_PAR":
+                    while True:
+                        args.append(Parser.parse_bool_expression())
+
+                        if Parser.lexer.next.kind == "COMMA":
+                            Parser.lexer.select_next()
+                        else:
+                            break
+                
+                if Parser.lexer.next.kind != "CLOSE_PAR":
+                    raise Exception("[Parser] error code")
+                Parser.lexer.select_next()
+                return FuncCall(ident_name, args)
+            else:
+                return Identifier(ident_name, [])
         elif Parser.lexer.next.kind == "PLUS":
             Parser.lexer.select_next()
             res = UnOp("+", Parser.parse_factor())
@@ -741,6 +872,29 @@ class Parser:
                     return Assignment("=", [ident, expr])
                 else:
                     raise Exception("[Parser] error code")
+            elif Parser.lexer.next.kind == "OPEN_PAR":
+                Parser.lexer.select_next()
+                args = []
+                if Parser.lexer.next.kind != "CLOSE_PAR":
+                    while True:
+                        args.append(Parser.parse_bool_expression())
+                        
+                        if Parser.lexer.next.kind == "COMMA":
+                            Parser.lexer.select_next()
+                        else:
+                            break
+                if Parser.lexer.next.kind != "CLOSE_PAR":
+                     raise Exception("[Parser] error code")
+                
+                Parser.lexer.select_next()
+
+                if Parser.lexer.next.kind == "END":
+                    Parser.lexer.select_next()
+                    return FuncCall(ident.value, args)
+                elif Parser.lexer.next.kind == "EOF":
+                    return FuncCall(ident.value, args)
+                else:
+                     raise Exception("[Parser] error code")
             else:
                 raise Exception("[Parser] error code")
 
@@ -814,6 +968,16 @@ class Parser:
         elif Parser.lexer.next.kind == "END":
             Parser.lexer.select_next()
             return NoOp(None, [])
+        elif Parser.lexer.next.kind == "RETURN":
+            Parser.lexer.select_next()
+            expr = Parser.parse_bool_expression()
+            if Parser.lexer.next.kind == "END":
+                Parser.lexer.select_next()
+                return Return("return", [expr])
+            elif Parser.lexer.next.kind == "EOF":
+                return Return("return", [expr])
+            else:
+                 raise Exception("[Parser] error code")
         else:
              expr = Parser.parse_bool_expression()
              if Parser.lexer.next.kind == "END":
@@ -842,14 +1006,67 @@ class Parser:
         Parser.lexer.select_next()
         return Block("block", children)
     
+    @staticmethod
+    def parse_func_declaration():
+        if Parser.lexer.next.kind !=  "FUNC":
+            raise Exception("[Parser] error code")
+        Parser.lexer.select_next()
+        if Parser.lexer.next.kind != "IDEN":
+            raise Exception("[Parser] error code")
+        func_name = Identifier(Parser.lexer.next.value, [])
+        Parser.lexer.select_next()
+
+        if Parser.lexer.next.kind != "OPEN_PAR":
+          raise Exception("[Parser] error code")
+        Parser.lexer.select_next()
+
+        params = []
+
+        if Parser.lexer.next.kind != "CLOSE_PAR":
+            while True:
+                if Parser.lexer.next.kind != "IDEN":
+                     raise Exception("[Parser] error code")
+                param_name = Identifier(Parser.lexer.next.value, [])
+                Parser.lexer.select_next()
+                if Parser.lexer.next.kind != "TYPE":
+                    raise Exception("[Parser] error code")
+                param_type = Parser.lexer.next.value
+                Parser.lexer.select_next()
+                params.append(VarDec(param_type, [param_name]))
+                if Parser.lexer.next.kind == "COMMA":
+                    Parser.lexer.select_next()
+                else:
+                    break
+
+        if Parser.lexer.next.kind != "CLOSE_PAR":
+             raise Exception("[Parser] error code")
+        Parser.lexer.select_next()
+        
+        if Parser.lexer.next.kind == "TYPE":
+            return_type = Parser.lexer.next.value
+            Parser.lexer.select_next()
+        else:
+            return_type = "void"
+        body = []
+        
+        while Parser.lexer.next.kind != "CLOSE_BRA":
+            stmt = Parser.parse_statement()
+            if stmt is not None:
+                body.append(stmt)
+
+        Parser.lexer.select_next()
+        return FuncDec(return_type, [func_name] + params + [Block("block", body)])
    
     @staticmethod
     def parse_program():
          children = []
          while Parser.lexer.next.kind != "EOF":
-             stmt = Parser.parse_statement()
+             if Parser.lexer.next.kind == "FUNC":
+                 stmt = Parser.parse_func_declaration()
+             else:
+                 stmt = Parser.parse_statement()
              children.append(stmt)
-         return Block("block", children)
+         return Block("program", children)
 
     @staticmethod
     def run(code):
