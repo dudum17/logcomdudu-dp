@@ -1,1 +1,6 @@
-imut x
+x = 3
+n = if x > 2 then 5 else 3 end
+
+for i = 0, n do
+  print(i)
+end

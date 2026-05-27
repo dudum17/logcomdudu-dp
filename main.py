@@ -414,7 +414,27 @@ class If (Node):
              # if simples
             Code.append(f"  je {label_end}")
             self.children[1].generate(st)
-            Code.append(f"{label_end}:")
+        Code.append(f"{label_end}:")
+
+
+class IfExpr(Node):
+    def __init__(self, value, children):
+        super().__init__(value, children)
+
+    def evaluate(self, st):
+        cond = self.children[0].evaluate(st)
+
+        if cond.type != "boolean":
+            raise Exception("[Semantic] error code")
+
+        if cond.value:
+            return self.children[1].evaluate(st)
+        else:
+            return self.children[2].evaluate(st)
+
+    def generate(self, st):
+        pass
+
 class While (Node):
     def __init__(self, value: str, children: list["Node"]):
          super().__init__(value, children)
@@ -560,6 +580,34 @@ class Return(Node):
     def evaluate(self, st):
         val = self.children[0].evaluate(st)
         return ("return", val)
+    def generate(self, st):
+        pass
+
+class For(Node):
+    def __init__(self, value, children):
+        super().__init__(value, children)
+
+    def evaluate(self, st):
+        var_name = self.children[0].value
+        start_val = self.children[1].evaluate(st)
+        end_val = self.children[2].evaluate(st)
+
+        if start_val.type != "number" or end_val.type != "number":
+            raise Exception("[Semantic] error code")
+
+        st.set_value(var_name, start_val)
+
+        while st.get_value(var_name).value <= end_val.value:
+            res = self.children[3].evaluate(st)
+
+            if isinstance(res, tuple) and res[0] == "return":
+                return res
+
+            atual = st.get_value(var_name)
+            st.set_value(var_name, Variable("number", atual.value + 1))
+
+        return None
+
     def generate(self, st):
         pass
 
@@ -727,6 +775,8 @@ class Lexer:
                 self.next = Token("BOOL", ident)
             elif ident == "imut":
                   self.next = Token("IMUT", ident)
+            elif ident == "for":
+                  self.next = Token("FOR", ident)
             elif ident in ("string", "number", "boolean"):
                 self.next = Token("TYPE", ident)
             else:
@@ -773,6 +823,30 @@ class Parser:
 
     @staticmethod
     def parse_factor():
+
+        if Parser.lexer.next.kind == "IF":
+           Parser.lexer.select_next()
+
+           cond = Parser.parse_bool_expression()
+
+           if Parser.lexer.next.kind != "OPEN_IF_BRA":  # then
+              raise Exception("[Parser] error code")
+
+           Parser.lexer.select_next()
+           true_expr = Parser.parse_bool_expression()
+
+           if Parser.lexer.next.kind != "ELSE":
+             raise Exception("[Parser] error code")
+
+           Parser.lexer.select_next()
+           false_expr = Parser.parse_bool_expression()
+
+           if Parser.lexer.next.kind != "CLOSE_BRA":  # end
+             raise Exception("[Parser] error code")
+
+           Parser.lexer.select_next()
+
+           return IfExpr("ifexpr", [cond, true_expr, false_expr])
         if Parser.lexer.next.kind == "INT":
             res = IntVal(int(Parser.lexer.next.value), [])
             Parser.lexer.select_next()
@@ -951,6 +1025,42 @@ class Parser:
 
              Parser.lexer.select_next()   # consome o end
              return While("while", [cond, Block("block", children)])
+        elif Parser.lexer.next.kind == "FOR":
+          Parser.lexer.select_next()
+
+          if Parser.lexer.next.kind != "IDEN":
+            raise Exception("[Parser] error code")
+
+          ident = Identifier(Parser.lexer.next.value, [])
+          Parser.lexer.select_next()
+
+          if Parser.lexer.next.kind != "ASSIGN":
+            raise Exception("[Parser] error code")
+
+          Parser.lexer.select_next()
+          start_expr = Parser.parse_bool_expression()
+
+          if Parser.lexer.next.kind != "COMMA":
+             raise Exception("[Parser] error code")
+
+          Parser.lexer.select_next()
+          end_expr = Parser.parse_bool_expression()
+
+          if Parser.lexer.next.kind != "OPEN_BRA":  # do
+            raise Exception("[Parser] error code")
+
+          Parser.lexer.select_next()
+
+          children = []
+
+          while Parser.lexer.next.kind != "CLOSE_BRA":
+            stmt = Parser.parse_statement()
+            if stmt is not None:
+               children.append(stmt)
+
+          Parser.lexer.select_next()
+
+          return For("for", [ident, start_expr, end_expr, Block("block", children)])
         elif  Parser.lexer.next.kind == "IF":
             Parser.lexer.select_next()
             cond = Parser.parse_bool_expression()
