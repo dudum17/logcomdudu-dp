@@ -30,6 +30,9 @@ class SymbolTable:
             if var.type != value_var.type:
                 raise Exception("[Semantic] error code")
 
+            if var.immutable:
+               raise Exception("[Semantic] immutable variable")
+
             var.value = value_var.value
             return
 
@@ -39,11 +42,13 @@ class SymbolTable:
 
         raise Exception("[Semantic] error code")
     
-    def create_variable(self, name, vtype, value,  is_function = False):
+    def create_variable(self, name, vtype, value,
+                    is_function = False,
+                    immutable = False):
         if name in self.table:
             raise Exception("[Semantic] error code")
         self.counter += 4
-        self.table[name] = Variable(vtype, value, -self.counter, is_function)
+        self.table[name] = Variable(vtype, value, -self.counter, is_function, immutable)
     
     def get_value(self, var):
         if var in self.table:
@@ -56,11 +61,15 @@ class SymbolTable:
 
 
 class Variable:
-     def __init__(self, type, value, shift = None, is_function = False):
+     def __init__(self, type, value, shift = None,
+                  is_function = False,
+                  immutable = False):
+
         self.type = type
         self.value = value
         self.shift = shift
         self.is_function = is_function
+        self.immutable = immutable
 
 class Code:
     instructions = []
@@ -414,18 +423,27 @@ class While (Node):
 
 
 class VarDec(Node):
-    def __init__(self, value, children):
+    def __init__(self, value, children, immutable=False):
         super().__init__(value, children)
+        self.immutable = immutable
     def evaluate(self, st):
         name = self.children[0].value
         if len(self.children) == 1:
-            st.create_variable(name, self.value, None)
+            st.create_variable(
+              name,
+              self.value,
+              None,
+              immutable=self.immutable)
             return None
         else:
             init_val: Variable  = self.children[1].evaluate(st)
             if init_val.type != self.value:
                 raise Exception("[Semantic] error code")
-            st.create_variable(name, self.value, init_val.value)
+            st.create_variable(
+             name,
+             self.value,
+             init_val.value,
+             immutable=self.immutable)
             return init_val
     def generate(self, st):
         name = self.children[0].value
@@ -675,6 +693,8 @@ class Lexer:
                 self.next = Token("VAR", ident)
             elif ident in ("true", "false"):
                 self.next = Token("BOOL", ident)
+            elif ident == "imut":
+                  self.next = Token("IMUT", ident)
             elif ident in ("string", "number", "boolean"):
                 self.next = Token("TYPE", ident)
             else:
@@ -826,7 +846,7 @@ class Parser:
     @staticmethod
     def parse_statement():
 
-        if Parser.lexer.next.kind == "VAR":
+        if Parser.lexer.next.kind in ("VAR", "IMUT"):
             return Parser.parse_var_declaration()
         if Parser.lexer.next.kind == "IDEN":
             ident = Identifier(Parser.lexer.next.value, [])
@@ -976,7 +996,10 @@ class Parser:
         return Block("block", children)
     @staticmethod
     def parse_var_declaration():
-       Parser.lexer.select_next()  # consome 'local'
+       
+       is_immutable = Parser.lexer.next.kind == "IMUT"
+
+       Parser.lexer.select_next()
 
        if Parser.lexer.next.kind != "IDEN":
            raise Exception("[Parser] error code")
@@ -992,15 +1015,18 @@ class Parser:
 
        children = [ident]
 
+       if is_immutable and Parser.lexer.next.kind != "ASSIGN":
+           raise Exception("[Semantic] immutable variable must be initialized")
+
        if Parser.lexer.next.kind == "ASSIGN":
           Parser.lexer.select_next()
           children.append(Parser.parse_bool_expression())
 
        if Parser.lexer.next.kind == "END":
           Parser.lexer.select_next()
-          return VarDec(vtype, children)
+          return VarDec(vtype, children, is_immutable)
        elif Parser.lexer.next.kind == "EOF":
-          return VarDec(vtype, children)
+          return VarDec(vtype, children, is_immutable)
 
        raise Exception("[Parser] error code")
     
