@@ -1043,7 +1043,7 @@ class Parser:
 
       if is_immutable:
        if Parser.lexer.next.kind != "ASSIGN":
-           raise Exception("[Semantic] error code")
+           raise Exception("[Parser] error code")
 
        Parser.lexer.select_next()
        children.append(Parser.parse_bool_expression())
