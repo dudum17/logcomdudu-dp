@@ -12,7 +12,34 @@ class Token:
 class PrePro:
     @staticmethod
     def filter(code):
-        return re.sub(r"--[^\n]*", "", code)
+        code = re.sub(r"--[^\n]*", "", code)
+
+        constants = {}
+        lines = code.split("\n")
+        new_lines = []
+
+        for line in lines:
+            stripped = line.strip()
+
+            if stripped.startswith("const "):
+                match = re.match(r"const\s+([A-Za-z_]\w*)\s*(?:=\s*)?(.+)", stripped)
+
+                if not match:
+                    raise Exception("[Parser] error code")
+
+                name = match.group(1)
+                value = match.group(2).strip()
+
+                constants[name] = value
+            else:
+                new_lines.append(line)
+
+        code = "\n".join(new_lines)
+
+        for name, value in constants.items():
+            code = re.sub(rf"\b{name}\b", value, code)
+
+        return code
 
 class SymbolTable:
     def __init__(self, parent = None):
@@ -31,16 +58,16 @@ class SymbolTable:
                 raise Exception("[Semantic] error code")
 
             if var.immutable:
-               raise Exception("[Semantic] immutable variable")
-
+               raise Exception("[Semantic] error code")
             var.value = value_var.value
             return
 
         if self.parent is not None:
-            self.parent.set_value(name, value_var)
-            return
+         self.parent.set_value(name, value_var)
+         return
 
-        raise Exception("[Semantic] error code")
+        self.create_variable(name, value_var.type, value_var.value)
+        return
     
     def create_variable(self, name, vtype, value,
                     is_function = False,
@@ -437,11 +464,16 @@ class VarDec(Node):
             return None
         else:
             init_val: Variable  = self.children[1].evaluate(st)
-            if init_val.type != self.value:
+            vtype = self.value
+
+            if vtype is None:
+              vtype = init_val.type
+
+            if init_val.type != vtype:
                 raise Exception("[Semantic] error code")
             st.create_variable(
              name,
-             self.value,
+             vtype,
              init_val.value,
              immutable=self.immutable)
             return init_val
@@ -996,39 +1028,51 @@ class Parser:
         return Block("block", children)
     @staticmethod
     def parse_var_declaration():
-       
-       is_immutable = Parser.lexer.next.kind == "IMUT"
+
+      is_immutable = Parser.lexer.next.kind == "IMUT"
+
+      Parser.lexer.select_next()
+
+      if Parser.lexer.next.kind != "IDEN":
+          raise Exception("[Parser] error code")
+
+      ident = Identifier(Parser.lexer.next.value, [])
+      Parser.lexer.select_next()
+
+      children = [ident]
+
+      if is_immutable:
+       if Parser.lexer.next.kind != "ASSIGN":
+           raise Exception("[Semantic] error code")
 
        Parser.lexer.select_next()
-
-       if Parser.lexer.next.kind != "IDEN":
-           raise Exception("[Parser] error code")
-
-       ident = Identifier(Parser.lexer.next.value, [])
-       Parser.lexer.select_next()
-
-       if Parser.lexer.next.kind != "TYPE":
-           raise Exception("[Parser] error code")
-
-       vtype = Parser.lexer.next.value
-       Parser.lexer.select_next()
-
-       children = [ident]
-
-       if is_immutable and Parser.lexer.next.kind != "ASSIGN":
-           raise Exception("[Semantic] immutable variable must be initialized")
-
-       if Parser.lexer.next.kind == "ASSIGN":
-          Parser.lexer.select_next()
-          children.append(Parser.parse_bool_expression())
+       children.append(Parser.parse_bool_expression())
 
        if Parser.lexer.next.kind == "END":
           Parser.lexer.select_next()
-          return VarDec(vtype, children, is_immutable)
+          return VarDec(None, children, True)
        elif Parser.lexer.next.kind == "EOF":
-          return VarDec(vtype, children, is_immutable)
+          return VarDec(None, children, True)
 
        raise Exception("[Parser] error code")
+
+      if Parser.lexer.next.kind != "TYPE":
+       raise Exception("[Parser] error code")
+
+      vtype = Parser.lexer.next.value
+      Parser.lexer.select_next()
+
+      if Parser.lexer.next.kind == "ASSIGN":
+        Parser.lexer.select_next()
+        children.append(Parser.parse_bool_expression())
+
+      if Parser.lexer.next.kind == "END":
+        Parser.lexer.select_next()
+        return VarDec(vtype, children, False)
+      elif Parser.lexer.next.kind == "EOF":
+         return VarDec(vtype, children, False)
+
+      raise Exception("[Parser] error code")
     
     @staticmethod
     def parse_func_declaration():

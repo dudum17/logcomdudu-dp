@@ -17,12 +17,22 @@ _start:
   ; aqui começa o codigo gerado:
 
   sub esp, 4 ; var x int [EBP-4]
-  mov eax, 5
-  mov [ebp-4], eax ; x = 5
-  sub esp, 4 ; var y int [EBP-8]
-  mov eax, 2
+  mov eax, 3
+  mov [ebp-4], eax ; x = 3
+  mov eax, 1
   push eax
   mov eax, [ebp-4]
+  pop ecx
+  add eax, ecx
+  push eax ; empilha f
+  push format_out ; formato int de saida
+  call printf ; Print f
+  add esp, 8 ; limpa os argumentos
+  mov eax, 1
+  mov [ebp-8], eax ; y = 
+  mov eax, [ebp-4]
+  push eax
+  mov eax, [ebp-8]
   pop ecx
   add eax, ecx
   mov [ebp-8], eax ; y = 
